@@ -92,7 +92,7 @@ Data was collected while keeping the vehicle in the center. The left, center and
 </p>
 
 **Reducing Zero Band:**
-It was observed that many of the images had zero steering angle associated with them. Hence even if the vehicle was headed towards the outside of the road, it did not learn to recover because it would predict the angle as $^{\circ}$
+It was observed that many of the images had zero steering angle associated with them. Hence even if the vehicle was headed towards the outside of the road, it did not learn to recover because it would predict the angle as $5^{\circ}$
 ```python
 if float(line[3]) == 0:
             if np.random.random() < zero_angle_keep:
@@ -137,6 +137,9 @@ For a very long time the car kept going out no matter how much training data  us
 <p align="center">
   <img src="writeup_data/fail.jpg" alt="Fail" height="300"/>
 </p>
+
+
+
 ```python
 left_angle = float(batch_sample[3]) + steering_ang_correction
 ```
