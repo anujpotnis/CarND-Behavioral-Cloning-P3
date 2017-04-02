@@ -38,7 +38,10 @@ The model.py file contains the code for training and saving the convolution neur
 
 #### 1. An appropriate model architecture has been employed
 
+After reading through some literature, the two architectures narrowed down were the VGG and the NVIDIA. The NVIDIA architecture was chosen for this project since it had been already used for a similar application whereas the VGG proved useful for classification.
+
 Model consists of a convolution neural network with 5x5 filter sizes and depths between 32 and 128. This has been adopted from the [NVIDIA Paper](https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf):
+
 ```python
 model.add(Convolution2D(24,5,5, init='glorot_uniform', subsample=(2, 2), border_mode='same', activation='relu'))
 model.add(MaxPooling2D(pool_size=(2,2), strides=(1, 1)))
@@ -52,6 +55,53 @@ model.add(Activation('relu'))
 The data is normalized in the model using a Keras lambda layer: 
 ```python
 model.add(Lambda(lambda x: x/127.5-1., input_shape=(col, row, ch), output_shape=(col, row, ch)))
+```
+
+Here is the summary of the architecture used:
+
+```python
+model = Sequential()
+
+# Normalization
+model.add(Lambda(lambda x: x/127.5-1., input_shape=(col, row, ch), output_shape=(col, row, ch)))
+
+# Convolution Layers
+model.add(Convolution2D(24,5,5, init='glorot_uniform', subsample=(2, 2), border_mode='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2), strides=(1, 1)))
+
+model.add(Convolution2D(36,5,5, init='glorot_uniform', subsample=(2, 2), border_mode='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2), strides=(1, 1)))
+
+model.add(Convolution2D(48,5,5, init='glorot_uniform', subsample=(2, 2), border_mode='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2), strides=(1, 1)))
+
+model.add(Convolution2D(64,3,3, init='glorot_uniform', border_mode='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2), strides=(1, 1)))
+
+model.add(Convolution2D(64,3,3, init='glorot_uniform', border_mode='same', activation='relu'))
+model.add(MaxPooling2D(pool_size=(2,2), strides=(1, 1)))
+
+model.add(Flatten())
+model.add(Dropout(0.2))
+model.add(Activation('relu'))
+
+model.add(Dense(1164))
+model.add(Dropout(0.5))
+model.add(Activation('relu'))
+
+model.add(Dense(100))
+model.add(Dropout(0.5))
+model.add(Activation('relu'))
+
+model.add(Dense(50))
+model.add(Dropout(0.5))
+model.add(Activation('relu'))
+
+model.add(Dense(10))
+model.add(Dropout(0.5))
+model.add(Activation('relu'))
+
+model.add(Dense(1))
 ```
 
 #### 2. Attempts to reduce overfitting in the model
@@ -70,14 +120,17 @@ train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
 #### 3. Model parameter tuning
 
-5 number of Epochs were sufficient for training. The model used an adam optimizer, so the learning rate was not tuned manually. The model was compiled using the Mean Square Error:
+5 number of Epochs were sufficient for training. This is because the accuracy did not significantly improve by increasing the number of epochs. In the future, functions such as EarlyStopping will be used to make the model stop after a certail delta in the accuracy.
+
+The model used an adam optimizer, so the learning rate was not tuned manually. The model was compiled using the Mean Square Error:
+
 ```python
 model.compile(loss='mse', optimizer='adam')
 ```
 
 ## Training Strategy
 ---
-#### 3. Creation of the Training Set & Training Process
+#### 1. Creation of the Training Set
 
 **Data Collection:**
 Data was collected while keeping the vehicle in the center. The left, center and right camera were used. A number of samples were also collected such that the vehicle vehicle was recovering. Additional data was collected at turns where the vehicle was failing to keep in the lane.
@@ -125,13 +178,35 @@ def i_jitter(I, steering):
     I[:,:,2] = I[:,:,2]+(np.random.uniform(-20,20))
     return cv2.cvtColor(I, cv2.COLOR_HSV2RGB), steering 
 ```
+#### 2. Training Process
 
-### Generators
+#### Generators
+
 Generators helped control the number of samples sent through a batch. This enabled learning on GPUs with limited memory.
 ```python
+def myGenerator(samples, batch_size):
+    num_samples = len(samples)
+    while 1: # loop forever so generator never terminates
+.
+.
 yield shuffle(X_train, y_train)
 ```
+A batch size of 256 was chosen because of GPU limitation.
+
+```python
+# compile and train the model using generator function
+train_generator = myGenerator(train_samples, batch_size=256)
+validation_generator = myGenerator(validation_samples, batch_size=256)
+```
+
+```python
+model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator, nb_val_samples=len(validation_samples), nb_epoch=5)
+```
+
+
+
 ## Testing Strategy
+
 ---
 For a very long time the car kept going out no matter how much training data  used. Later it was observed, that the steering angle correction sign was inverted. After the correction was made, the car was able to successfully cross the bridge after which it left the lane
 <p align="center">
